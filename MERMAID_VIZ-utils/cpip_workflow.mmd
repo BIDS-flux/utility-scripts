@@ -1,0 +1,104 @@
+%%{ init: { 
+    "theme": "base",
+    "themeVariables": {
+
+        "fontSize": "16px",
+        "fontFamily": "Inter, 'Helvetica Neue', Arial, sans-serif"
+    },
+  "sequence": { 
+    "showSequenceNumbers": true,
+    "wrap": true,
+    "width": 200,
+    "boxMargin": 10,
+    "boxTextMargin": 5,
+    "useMaxWidth": true
+  }
+} }%%
+sequenceDiagram
+    autonumber
+    
+    actor Admin as 🧙 Data Manager
+    
+    box rgba(242, 108, 108, 1) Raw Data Acquisition
+        participant WebForms as 📋 Web Forms
+        participant Scanner as 🏥 MRI Scanner
+        participant Mercure as 🔀 DICOM Router<br/>(Storescp)
+    end
+    
+    box rgba(218, 130, 71, 1) Local DevOps - GitLab
+        participant DCM as 🔐🧠 DICOM Study
+        participant BIDS as 🧠 BIDS Dataset
+        participant BehBIDS as 📝 Behavioral BIDS
+        participant QC as 🔍 MRIQC
+        participant Deriv as 🧮 BIDS Derivatives
+    end
+    
+    box rgba(100, 209, 100, 1) Federated DevOps
+        participant FedBIDS as ☁️ BIDS (Fed)
+        participant FedBeh as ☁️ Behavioral (Fed)
+        participant FedDeriv as ☁️ Derivatives (Fed)
+    end
+
+    Note over Scanner,Mercure: Initial Setup
+    Scanner ->> Mercure: Send DICOM Files
+    Mercure ->> DCM: Initialize Study
+    Mercure ->> BIDS: Initialize Dataset
+    BIDS ->> QC: Initialize MRIQC
+    BIDS ->> Deriv: Initialize Derivatives
+    WebForms ->> BehBIDS: Initialize Behavioral Data
+    
+    rect rgba(232, 239, 250, 0.85)
+        Note over WebForms,FedDeriv: Session Processing Loop
+        
+        loop Every New MRI Session
+            Note over Scanner,BIDS: Imaging Data Pipeline
+            Mercure ->> DCM: Add Session as Submodule
+            DCM ->> BIDS: Trigger HeuDiConv Conversion
+            
+            BIDS ->>+ BIDS: Create Pull Request
+
+            Note over BIDS,QC: Automated QC Steps
+            BIDS ->> BIDS: Run BIDS Validator
+            BIDS ->> BIDS: Check Protocol Compliance
+            BIDS ->> BIDS: Apply Defacing
+            BIDS ->> QC: Trigger MRIQC
+            QC ->> BIDS: Attach QC Reports to PR
+
+            BIDS ->>- Admin: 📧 Notify for Review
+            Admin ->> BIDS: ✅ Review + Fix + Merge
+            
+            rect rgba(205, 236, 214, 0.95)
+                Note over BIDS,FedBIDS: Sync to Federation
+                BIDS ->> FedBIDS: 🚀 Push (Git + S3)
+            end
+            
+            Note over BIDS,Deriv: Preprocessing Pipeline
+            loop For Each Preprocessing Pipeline
+                BIDS ->>+ Deriv: Trigger Preprocessing
+                Deriv ->> Deriv: Create PR with Reports
+                Deriv ->>- Admin: 📧 Notify for Review
+                Admin ->> Deriv: ✅ Review Reports + Merge
+                rect rgba(205, 236, 214, 0.95)
+                    Note over Deriv,FedDeriv: Federation Sync      
+                    Deriv ->> FedDeriv: 🚀 Push (Git + S3)
+                end
+            end
+        end
+    end
+
+    rect rgba(250, 241, 231, 0.85)
+        Note over WebForms,FedBeh: Cyclical Behavioral Update
+        loop Every Cycle
+            Note over WebForms,BehBIDS: Behavioral Data Pipeline
+            WebForms ->> BehBIDS: Auto-update on Changes
+            BehBIDS ->>+ BehBIDS: BIDS-like Structure Validation
+            BehBIDS ->>+ BehBIDS: Create Pull Request
+            BehBIDS ->>- Admin: 📧 Notify for Review
+            Admin ->> BehBIDS: ✅ Review + Fix + Merge
+
+            rect rgba(205, 236, 214, 0.95)
+                Note over BehBIDS,FedBeh: Sync to Federation
+                BehBIDS ->> FedBeh: 🚀 Push (Git + S3)
+            end
+        end
+    end
